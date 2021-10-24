@@ -1,6 +1,7 @@
 import cv2
 import os
 import numpy as np
+import json
 
 def repair_name(word):
     return word[0:len(word)-4]
@@ -17,7 +18,7 @@ def read_annotation(file):
         x_max = int(words[15][1:len(words[15])-1])
         y_min = int(words[13][:len(words[13])-1])
         y_max = int(words[16][:len(words[16])-1])
-        bounding_boxes_actual.append([x_min,y_min,x_max,y_max])
+        bounding_boxes_actual.append([x_min,y_min,x_max-x_min,y_max-y_min])
         lines = lines[5:]
     
     return bounding_boxes_actual
@@ -72,15 +73,28 @@ hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 hog.save("weights_cv2_model")
 total = 0    
 
+
+dict_list = []
+
 for i in range(0,no_images):
     img = cv2.imread("PennFudanPed/PNGImages/" + file_names[i] +".png")
     result = read_annotation("PennFudanPed/Annotation/"+ file_names[i] +".txt")
     (rects, weights) = hog.detectMultiScale(img)
     rect_fin = non_max_supression(rects,0.2)
     
-    total = total + len(rect_fin)
-    for (x,y,w,h) in rect_fin:
+   
+    for ((x,y,w,h),weigh) in zip(rects,weights):
+        if (x,y,w,h) not in rect_fin:
+            continue
+        dict_store = {}
+        dict_store["bbox"] = [int(x),int(y),int(w),int(h)]
+        dict_store["score"] = float(weigh)
+        dict_store["image_id"] = file_names[i]
+        dict_store["category_id"] = 1
+        dict_list.append(dict_store)
+        total = total + 1
         img = cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
     cv2.imwrite("PennFudanPed/output/img"+file_names[i]+".png",img)
-    
-print(total)
+with open('output_file.json', 'w') as fout:
+    json.dump(dict_list , fout)
+
