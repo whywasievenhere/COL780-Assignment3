@@ -69,6 +69,7 @@ file_names = [repair_name(name) for name in os.listdir("PennFudanPed/PNGImages")
 no_images = len(file_names)    
 hog = cv2.HOGDescriptor()
 hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+hog.save("weights_cv2_model")
 total = 0    
 
 for i in range(0,no_images):
