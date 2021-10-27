@@ -6,6 +6,7 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision.models import detection
 import numpy as np
+import json
 
 class PedestrainDataset(Dataset):
     def __init__(self, root, transforms):
@@ -105,26 +106,36 @@ def main():
 
     data_loader = DataLoader(eval_dataset, batch_size=1, shuffle=False)
 
+    json_dump = []
+
+    img_number = 0
     with torch.no_grad():
         for input, target in data_loader:
+            img_number += 1
             input = input.to(device)
 
             outputs = model(input)[0]
 
             img = np.squeeze(target["original"].cpu().detach().numpy())
             for i in range(len(outputs["boxes"])):
-                confidence = outputs["scores"][i]
+                confidence = outputs["scores"][i].item()
 
                 # If not pedestrian, ignore object!
                 idx = int(outputs["labels"][i])
                 if idx != 1: 
                     continue
 
+                box = outputs["boxes"][i].detach().cpu().numpy()
+                (startX, startY, endX, endY) = box.astype("int").tolist()
+
+                current_json = {}
+                current_json["image_id"] = img_number
+                current_json["category_id"] = 1
+                current_json["bbox"] = (startX, startY, endX-startX, endY-startY)
+                current_json["score"] = confidence
+                json_dump.append(current_json)
+
                 if confidence > 0.9:
-
-                    box = outputs["boxes"][i].detach().cpu().numpy()
-                    (startX, startY, endX, endY) = box.astype("int")
-
                     label = "{}: {:.2f}%".format("Pedestrian", confidence * 100)
                     cv2.rectangle(img, (startX, startY), (endX, endY), COLOR, 2)
                     y = startY - 15 if startY - 15 > 15 else startY + 15
@@ -132,6 +143,9 @@ def main():
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLOR, 2)
 
             cv2.imwrite(target["output_path"][0], img)
+
+    with open('output_file.json', 'w') as fout:
+        json.dump(json_dump, fout)
 
 if __name__ == '__main__':
     main()
