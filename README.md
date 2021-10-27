@@ -2,5 +2,5 @@
 
 Pedestrain detection:
 
-- [ ] HOG
-- [ ] Faster-RCNN
+- [x] HOG
+- [x] Faster-RCNN
