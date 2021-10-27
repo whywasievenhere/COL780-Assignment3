@@ -169,8 +169,10 @@ for i in range(0,no_layers):
     positive_labels[i] = np.array(positive_labels[i])
     negative_labels[i] = np.array(negative_labels[i])
     y_train[i] = np.array(y_train[i])
-    x_train.append(np.concatenate((positive_labels[i],negative_labels[i])))
-
+    if positive_labels[i].shape[0] != 0:
+        x_train.append(np.concatenate((positive_labels[i],negative_labels[i])))
+    else:
+        x_train.append(negative_labels[i])      
 clf = []
 for i in range(0,no_layers):
     clf.append(svm.LinearSVC())
@@ -213,7 +215,7 @@ for i in range(0,no_images):
         dict_list.append(dict_store)
         total = total + 1
         store_img = cv2.rectangle(store_img, (int(x),int(y)), (int(x)+winW,int(y)+winH), (255,0,0), 2)
-    cv2.imwrite("PennFudanPed/output/img"+file_names[i]+".png",img)
+    cv2.imwrite("PennFudanPed/output/"+file_names[i]+".png",img)
             
 
 with open('output_file.json', 'w') as fout:

@@ -3,7 +3,6 @@ import os
 import numpy as np
 import json
 
-
 def repair_name(word):
     return word[0:len(word)-4]
 
@@ -104,6 +103,7 @@ for i in range(0,no_images):
         img = cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
         
 
-    cv2.imwrite("PennFudanPed/output/img"+file_names[i]+".png",img)
+    cv2.imwrite("PennFudanPed/output/"+file_names[i]+".png",img)
 with open('output_file.json', 'w') as fout:
     json.dump(dict_list , fout)
+    
