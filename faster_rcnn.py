@@ -5,7 +5,6 @@ import cv2
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision.models import detection
-import numpy as np
 import json
 
 class PedestrainDataset(Dataset):
@@ -57,8 +56,6 @@ class PedestrainDataset(Dataset):
 
         image_id = torch.tensor([idx])
         area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
-        # suppose all instances are not crowd
-        iscrowd = torch.zeros((num_objs,), dtype=torch.int64)
 
         target = {}
         target["boxes"] = boxes
@@ -66,9 +63,8 @@ class PedestrainDataset(Dataset):
         target["masks"] = masks
         target["image_id"] = image_id
         target["area"] = area
-        target["iscrowd"] = iscrowd
         target["original"] = orig
-        target["output_path"] = self.root + '/' + 'output/' + self.imgs[idx]
+        target["output_path"] = self.root + '/output/' + self.imgs[idx]
 
         if self.transforms is not None:
             img = self.transforms(img)
@@ -101,7 +97,7 @@ transforms = T.Compose(
 )
 
 COLOR = 5
-def main():
+def main(threshold=0.9):
     eval_dataset = PedestrainDataset('PennFudanPed', transforms)
 
     data_loader = DataLoader(eval_dataset, batch_size=1, shuffle=False)
@@ -135,7 +131,7 @@ def main():
                 current_json["score"] = confidence
                 json_dump.append(current_json)
 
-                if confidence > 0.9:
+                if confidence > threshold:
                     label = "{}: {:.2f}%".format("Pedestrian", confidence * 100)
                     cv2.rectangle(img, (startX, startY), (endX, endY), COLOR, 2)
                     y = startY - 15 if startY - 15 > 15 else startY + 15
@@ -144,7 +140,7 @@ def main():
 
             cv2.imwrite(target["output_path"][0], img)
 
-    with open('output_file.json', 'w') as fout:
+    with open('frcnn_output_file.json', 'w') as fout:
         json.dump(json_dump, fout)
 
 if __name__ == '__main__':
