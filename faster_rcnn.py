@@ -104,7 +104,7 @@ def main(threshold=0.9):
 
     json_dump = []
 
-    img_number = 0
+    img_number = -1
     with torch.no_grad():
         for input, target in data_loader:
             img_number += 1
