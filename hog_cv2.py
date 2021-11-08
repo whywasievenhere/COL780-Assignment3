@@ -6,24 +6,6 @@ import json
 def repair_name(word):
     return word[0:len(word)-4]
 
-def read_annotation(file):
-    bounding_boxes_actual = []
-    f1 = open(file)
-    lines = f1.readlines()
-    lines = lines[8:]
-    while(len(lines)!=0):
-        line_imp = lines[2]
-        words = line_imp.split()
-        x_min = int(words[12][1:len(words[12])-1])
-        x_max = int(words[15][1:len(words[15])-1])
-        y_min = int(words[13][:len(words[13])-1])
-        y_max = int(words[16][:len(words[16])-1])
-        bounding_boxes_actual.append([x_min,y_min,x_max-x_min,y_max-y_min])
-        lines = lines[5:]
-    
-    return bounding_boxes_actual
-
-
 def miou_calculate(bb1, bb2):
     x_left = max(bb1[0], bb2[0])
     x_right = min(bb1[0]+bb1[2], bb2[0]+bb2[2])
@@ -69,20 +51,25 @@ def non_max_supression(boxes,overlapThreshold):
     return final_boxes
 
 
-file_names = [repair_name(name) for name in os.listdir("PennFudanPed/PNGImages") if os.path.isfile(os.path.join("PennFudanPed/PNGImages", name))]
-no_images = len(file_names)    
+file_names = []
+image_to_id = {}
 hog = cv2.HOGDescriptor()
 hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 hog.save("weights_cv2_model")
 total = 0    
 
+file1 = open("pedestrian_detection/PennFudanPed_val.json")
+data1 = json.load(file1)
+for i in range(0,len(data1["images"])):
+    file_names.append(data1["images"][i]["file_name"])
+    image_to_id[data1["images"][i]["file_name"]]= data1["images"][i]["id"]
 
+no_images = len(file_names)    
 dict_list = []
 
 
 for i in range(0,no_images):
-    img = cv2.imread("PennFudanPed/PNGImages/" + file_names[i] +".png")
-    result = read_annotation("PennFudanPed/Annotation/"+ file_names[i] +".txt")
+    img = cv2.imread(file_names[i])
     (rects, weights) = hog.detectMultiScale(img)
     rect_fin = non_max_supression(rects,0.2)
 
@@ -94,7 +81,7 @@ for i in range(0,no_images):
         dict_store["score"] = float(weigh)
         
         #May have to change
-        dict_store["image_id"] = file_names[i]
+        dict_store["image_id"] = image_to_id[file_names[i]]
         dict_store["category_id"] = 1
         
 
@@ -103,7 +90,6 @@ for i in range(0,no_images):
         img = cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
         
 
-    cv2.imwrite("PennFudanPed/output/"+file_names[i]+".png",img)
 with open('output_file.json', 'w') as fout:
     json.dump(dict_list , fout)
     

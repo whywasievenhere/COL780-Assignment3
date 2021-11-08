@@ -7,6 +7,7 @@ from skimage.transform import pyramid_gaussian
 from sklearn import svm
 import time
 import joblib
+import sys
 
 
 def repair_name(word):
@@ -117,13 +118,26 @@ no_layers = 2
 
 
 
-file_names = [repair_name(name) for name in os.listdir("PennFudanPed/PNGImages") if os.path.isfile(os.path.join("PennFudanPed/PNGImages", name))]
-no_images = len(file_names) 
+file_names = []
+image_to_id = {}
+list_bbox = {}
+file_names.sort()
 total = 0
 
+file1 = open("pedestrian_detection/PennFudanPed_train.json")
+data1 = json.load(file1)
+for i in range(0,len(data1["images"])):
+    file_names.append(data1["images"][i]["file_name"])
+    image_to_id[data1["images"][i]["file_name"]]= data1["images"][i]["id"]
+    list_bbox[data1["images"][i]["id"]]= []
+
+for i in range(0,len(data1["annotations"])):
+    list_bbox[data1["annotations"][i]["image_id"]].append(data1["annotations"][i]["bbox"])
+    
 
 positive_labels = []
 negative_labels = []
+
 
 for i in range(0,no_layers):
     positive_labels.append([])
@@ -132,17 +146,17 @@ for i in range(0,no_layers):
 
 start = time.time()
 
-for i in range(0,no_images):
-    img = cv2.imread("PennFudanPed/PNGImages/" + file_names[i] +".png")
-    result = read_annotation("PennFudanPed/Annotation/"+ file_names[i] +".txt")
+for i in range(0,len(file_names)):
+    img = cv2.imread(file_names[i])
+    result = list_bbox[image_to_id[file_names[i]]]
     
     count = 0
-    for resize in pyramid_gaussian(img,max_layer=no_layers-1 ,downscale=1.2):
+    for resize in pyramid_gaussian(img,max_layer=no_layers-1 ,downscale=1.1):
         for (x,y,window) in sliding_window(resize, stepSize=20, windowSize=(winW,winH)):
             store_res = [ miou_calculate(scale_down(rect1,1.2,count),[x,y,winW,winH]) for rect1 in result ]
             if window.shape != (winH,winW,3):
                 continue
-            if max(store_res) > 0.25:
+            if max(store_res) > 0.20:
                 hog_val = hog(window,orientations=9,pixels_per_cell=(16,16),cells_per_block=(4,4))
                 positive_labels[count].append(hog_val)
             else:
@@ -181,14 +195,20 @@ for i in range(0,no_layers):
     
 print("Halfway done.")
 
+file_names_2 = []
+file2 = open("pedestrian_detection/PennFudanPed_val.json")
+data2 = json.load(file2)
+for i in range(0,len(data2["images"])):
+    file_names_2.append(data2["images"][i]["file_name"])
+    image_to_id[data2["images"][i]["file_name"]]= data2["images"][i]["id"]
+ 
 dict_list = []
-for i in range(0,no_images):
+for i in range(0,len(file_names_2)):
     list_boxes = []
-    img = cv2.imread("PennFudanPed/PNGImages/" + file_names[i] +".png")
+    img = cv2.imread(file_names_2[i])
     store_img = img
     
-    
-    for resize in pyramid_gaussian(img,max_layer=no_layers-1 ,downscale=1.2):
+    for resize in pyramid_gaussian(img,max_layer=no_layers-1 ,downscale=1.1):
         count = 0
         for (x,y,window) in sliding_window(resize, stepSize=20, windowSize=(winW,winH)):
             if window.shape != (winH,winW,3):
@@ -201,14 +221,14 @@ for i in range(0,no_images):
                 store_arr.append(val1[0][0])
                 list_boxes.append(store_arr)
         count = count+ 1
-    list_boxes = non_max_supression(list_boxes,0.10)
+    list_boxes = non_max_supression(list_boxes,0.05)
     for (x,y,w,h,weigh) in list_boxes:
         dict_store = {}
         dict_store["bbox"] = [int(x),int(y),int(w),int(h)]
         dict_store["score"] = float(weigh)
         
         #May have to change
-        dict_store["image_id"] = file_names[i]
+        dict_store["image_id"] = image_to_id[file_names_2[i]]
         dict_store["category_id"] = 1
         
 
@@ -220,3 +240,5 @@ for i in range(0,no_images):
 
 with open('output_file.json', 'w') as fout:
     json.dump(dict_list , fout)
+
+           
