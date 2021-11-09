@@ -116,7 +116,9 @@ MODELS = {
 	"retinanet": detection.retinanet_resnet50_fpn
 }
 # load the model and set it to evaluation mode
-model = MODELS["frcnn-resnet"](pretrained=True, progress=True, pretrained_backbone=True).to(device) if args.model is None else torch.load(args.model)
+MODEL_NAME = "frcnn-resnet"
+model = MODELS[MODEL_NAME](pretrained=True, progress=True, pretrained_backbone=True).to(device) if args.model is None else torch.load(args.model)
+# torch.save(model, './weights/{}.pth'.format(MODEL_NAME))
 model.eval()
 
 # Convert Image to tensor (can be used for other transforms compositionally as well).
